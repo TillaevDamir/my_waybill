@@ -30,7 +30,7 @@ void main() {
 
 // --- URLs ---
 // IMPORTANT: Replace with your actual endpoints
-const String baseUrl = 'http://192.168.0.136:88//taxi/hs/taxi'; //212.42.103.160:5775
+const String baseUrl = 'http://damir.service.kg//taxi/hs/taxi'; //212.42.103.160:5775
 const String loginUrl = '$baseUrl/auth';
 const String registrationUrl = '$baseUrl/auth'; // Corrected to match the code
 const String openShiftUrl = '$baseUrl/open_shift'; // New URL for opening a shift
