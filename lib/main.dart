@@ -13,10 +13,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
-// Import our updated helper
 import 'database_helper.dart';
 
-// --- Class to bypass SSL errors. Use for testing only! ---
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -32,21 +30,18 @@ void main() {
   runApp(const WaybillApp());
 }
 
-// --- URLs ---
-const String baseUrl = 'http://192.168.0.136:88//taxi/hs/taxi';
+const String baseUrl = 'http://damir.service.kg//taxi/hs/taxi';
 const String loginUrl = '$baseUrl/auth';
 const String registrationUrl = '$baseUrl/auth';
 const String openShiftUrl = '$baseUrl/open_shift';
-const String getWaybillUrl = '$baseUrl/get_waybill'; // POST URL for initial download
+const String getWaybillUrl = '$baseUrl/get_waybill';
 
-// --- НОВЫЙ URL ДЛЯ QR-КОДА И GET-ЗАПРОСА ---
-const String downloadWaybillUrl = 'http://192.168.0.136:88/taxi/hs/taxi/download_waybill';
+const String downloadWaybillUrl = 'http://damir.service.kg/taxi/hs/taxi/download_waybill';
 
 const String staticServerUsername = 'HttpUser';
 const String staticServerPassword = 'HttpUser';
 
 
-// --- Main Application Class (без изменений) ---
 class WaybillApp extends StatefulWidget {
   const WaybillApp({super.key});
 
@@ -131,7 +126,6 @@ class _WaybillAppState extends State<WaybillApp> with WidgetsBindingObserver {
   }
 }
 
-// ИЗМЕНЕННЫЙ виджет для проверки авторизации
 class AuthChecker extends StatefulWidget {
   const AuthChecker({super.key});
 
@@ -168,7 +162,6 @@ class _AuthCheckerState extends State<AuthChecker> {
 }
 
 
-// ИЗМЕНЕННЫЙ экран авторизации
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -296,7 +289,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// --- Registration Screen (без изменений) ---
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
   @override
@@ -443,7 +435,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                               style: TextStyle(color: Theme.of(context).primaryColor, decoration: TextDecoration.underline),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
-                                  _launchURL('https://your-company.com/privacy-policy');
+                                  _launchURL('http://your-company.com/privacy-policy');
                                 },
                             ),
                             const TextSpan(text: ' и '),
@@ -452,7 +444,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                               style: TextStyle(color: Theme.of(context).primaryColor, decoration: TextDecoration.underline),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
-                                  _launchURL('https://your-company.com/terms-of-use');
+                                  _launchURL('http://your-company.com/terms-of-use');
                                 },
                             ),
                             const TextSpan(text: '.'),
@@ -504,7 +496,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 }
 
-// --- WAYBILL SCREEN ---
 enum WaybillStatus {
   loading,
   initial,
@@ -531,7 +522,7 @@ class _WaybillPageState extends State<WaybillPage> {
 
   Timer? _timer;
   int _remainingSeconds = 0;
-  final int _waitTimeInSeconds = 5; // 5 minutes
+  final int _waitTimeInSeconds = 30;
 
   @override
   void initState() {
@@ -591,7 +582,6 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 
-  // --- SHIFT MANAGEMENT METHODS ---
   Future<void> _openShift() async {
     if (_userCredentials['phone'] == null || _userCredentials['password'] == null) {
       _showAlertDialog('Ошибка сессии', 'Данные сессии были утеряны. Пожалуйста, авторизуйтесь снова.')
@@ -640,7 +630,6 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 
-  // ИСПРАВЛЕННЫЙ МЕТОД ЗАГРУЗКИ
   Future<void> _downloadWaybill({bool isFirstTime = false}) async {
     setState(() => _status = WaybillStatus.loading);
     try {
@@ -655,7 +644,6 @@ class _WaybillPageState extends State<WaybillPage> {
         final pdfFile = await _getPdfFile();
         await pdfFile.writeAsBytes(response.bodyBytes);
 
-        // ВРЕМЯ ОБНОВЛЯЕТСЯ, НО REQUEST_ID БОЛЬШЕ НЕ УДАЛЯЕТСЯ
         if (isFirstTime) {
           await DatabaseHelper.instance.saveUserData(requestTimestamp: null);
         }
@@ -742,7 +730,6 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 
-  // --- HELPER METHODS ---
   Future<void> _showInfoDialog(String title, String message) async {
     return showDialog<void>(
       context: context,
@@ -867,7 +854,6 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 
-  // --- BUILD МЕТОДЫ ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1090,7 +1076,7 @@ class _WaybillPageState extends State<WaybillPage> {
       case WaybillStatus.waitingForDownload:
         return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: null, child: Text("Автоматическая загрузка через ($_timerText)")));
       case WaybillStatus.waybillReady:
-        return const SizedBox.shrink(); // Buttons are now inside the main content
+        return const SizedBox.shrink();
       case WaybillStatus.loading:
       case WaybillStatus.error:
         return const SizedBox.shrink();
@@ -1100,7 +1086,6 @@ class _WaybillPageState extends State<WaybillPage> {
   }
 }
 
-// --- НОВЫЙ ОТДЕЛЬНЫЙ ВИДЖЕТ ДЛЯ ПРОСМОТРА PDF ---
 class PdfViewerPage extends StatelessWidget {
   final String filePath;
 
