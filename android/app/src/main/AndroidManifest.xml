@@ -3,7 +3,6 @@
 
     <!-- Add this permission for network access -->
     <uses-permission android:name="android.permission.INTERNET" />
-
     <application
         android:label="Путевой лист"
         android:name="${applicationName}"

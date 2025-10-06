@@ -1,19 +1,20 @@
-import 'dart:io';
+// database_helper.dart
+
 import 'package:path/path.dart';
+// ИСПРАВЛЕННЫЙ ИМПОРТ
 import 'package:sqflite/sqflite.dart';
-import 'dart:typed_data';
 
 class DatabaseHelper {
   static const _databaseName = "WaybillApp.db";
-  static const _databaseVersion = 2; // <-- Version incremented for migration
+  static const _databaseVersion = 3;
 
   static const table = 'user_data';
 
   static const columnId = '_id';
   static const columnPhone = 'phone';
   static const columnPassword = 'password';
-  static const columnRequestId = 'request_id'; // <-- New field
-  static const columnRequestTimestamp = 'request_timestamp'; // <-- New field
+  static const columnRequestId = 'request_id';
+  static const columnRequestTimestamp = 'request_timestamp';
 
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -35,43 +36,68 @@ class DatabaseHelper {
     await db.execute('''
           CREATE TABLE $table (
             $columnId INTEGER PRIMARY KEY,
-            $columnPhone TEXT NOT NULL,
-            $columnPassword TEXT NOT NULL,
+            $columnPhone TEXT,
+            $columnPassword TEXT,
             $columnRequestId TEXT,
             $columnRequestTimestamp INTEGER
           )
           ''');
   }
 
-  // Method to update DB schema when version is incremented
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE $table ADD COLUMN $columnRequestId TEXT');
       await db.execute('ALTER TABLE $table ADD COLUMN $columnRequestTimestamp INTEGER');
     }
+    if (oldVersion < 3) {
+      final List<Map<String, dynamic>> oldData = await db.query(table);
+      await db.execute('DROP TABLE $table');
+      await _onCreate(db, newVersion);
+      for (final row in oldData) {
+        final newRow = {
+          columnPhone: row[columnPhone],
+          columnPassword: row[columnPassword],
+          columnRequestId: row[columnRequestId],
+          columnRequestTimestamp: row[columnRequestTimestamp],
+        };
+        await db.insert(table, newRow);
+      }
+    }
   }
 
   // --- METHODS ---
 
-  // Universal method to save data
   Future<void> saveUserData({
-    required String phone,
-    required String password,
+    String? phone,
+    String? password,
     String? requestId,
     int? requestTimestamp,
   }) async {
     final db = await instance.database;
-    await db.delete(table); // Clear old data
-    await db.insert(table, {
-      columnPhone: phone,
-      columnPassword: password,
-      columnRequestId: requestId,
-      columnRequestTimestamp: requestTimestamp,
-    });
+    final existingData = await getUserData();
+
+    final Map<String, dynamic> dataToSave = {
+      if (phone != null) columnPhone: phone,
+      if (password != null) columnPassword: password,
+      if (requestId != null) columnRequestId: requestId,
+      if (requestTimestamp != null) columnRequestTimestamp: requestTimestamp,
+    };
+
+    if (dataToSave.isEmpty) return;
+
+    if (existingData != null) {
+      await db.update(table, dataToSave, where: '$columnId = ?', whereArgs: [existingData[columnId]]);
+    } else {
+      final allData = {
+        columnPhone: phone,
+        columnPassword: password,
+        columnRequestId: requestId,
+        columnRequestTimestamp: requestTimestamp,
+      };
+      await db.insert(table, allData);
+    }
   }
 
-
-  // Get all user data
   Future<Map<String, dynamic>?> getUserData() async {
     final db = await instance.database;
     final maps = await db.query(table, limit: 1);
@@ -81,13 +107,22 @@ class DatabaseHelper {
     return null;
   }
 
-  // Clear all user data (on logout)
+  Future<void> clearAuthCredentials() async {
+    final db = await instance.database;
+    await db.update(table, {
+      columnPhone: null,
+      columnPassword: null,
+    });
+  }
+
   Future<void> clearAllUserData() async {
     final db = await instance.database;
     await db.delete(table);
   }
 
-  // Clear only the waybill request data
+  // ИСПРАВЛЕННЫЙ МЕТОД
+  // Теперь он НЕ вызывается после успешной загрузки файла,
+  // а только при явном завершении смены.
   Future<void> clearWaybillRequestData() async {
     final db = await instance.database;
     await db.update(
@@ -96,3 +131,4 @@ class DatabaseHelper {
     );
   }
 }
+

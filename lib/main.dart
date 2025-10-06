@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -8,6 +9,9 @@ import 'dart:async'; // For Timer
 import 'package:flutter/services.dart';
 import 'package:signature/signature.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 // Import our updated helper
 import 'database_helper.dart';
@@ -29,18 +33,20 @@ void main() {
 }
 
 // --- URLs ---
-// IMPORTANT: Replace with your actual endpoints
-const String baseUrl = 'http://damir.service.kg//taxi/hs/taxi'; //212.42.103.160:5775
+const String baseUrl = 'http://192.168.0.136:88//taxi/hs/taxi';
 const String loginUrl = '$baseUrl/auth';
-const String registrationUrl = '$baseUrl/auth'; // Corrected to match the code
-const String openShiftUrl = '$baseUrl/open_shift'; // New URL for opening a shift
-const String getWaybillUrl = '$baseUrl/get_waybill'; // New URL for getting a waybill by ID
+const String registrationUrl = '$baseUrl/auth';
+const String openShiftUrl = '$baseUrl/open_shift';
+const String getWaybillUrl = '$baseUrl/get_waybill'; // POST URL for initial download
 
-const String staticServerUsername = 'Http User';
+// --- НОВЫЙ URL ДЛЯ QR-КОДА И GET-ЗАПРОСА ---
+const String downloadWaybillUrl = 'http://192.168.0.136:88/taxi/hs/taxi/download_waybill';
+
+const String staticServerUsername = 'HttpUser';
 const String staticServerPassword = 'HttpUser';
 
 
-// --- Main Application Class ---
+// --- Main Application Class (без изменений) ---
 class WaybillApp extends StatefulWidget {
   const WaybillApp({super.key});
 
@@ -66,7 +72,6 @@ class _WaybillAppState extends State<WaybillApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // Logout logic on app minimize is removed as per new requirements
   }
 
   @override
@@ -121,12 +126,12 @@ class _WaybillAppState extends State<WaybillApp> with WidgetsBindingObserver {
           margin: const EdgeInsets.symmetric(vertical: 8),
         ),
       ),
-      home: const AuthChecker(), // Start with authorization check
+      home: const AuthChecker(),
     );
   }
 }
 
-// New widget to check if the user is logged in
+// ИЗМЕНЕННЫЙ виджет для проверки авторизации
 class AuthChecker extends StatefulWidget {
   const AuthChecker({super.key});
 
@@ -144,7 +149,7 @@ class _AuthCheckerState extends State<AuthChecker> {
   Future<void> _checkLoginStatus() async {
     final user = await DatabaseHelper.instance.getUserData();
     if (mounted) {
-      if (user != null) {
+      if (user != null && user['phone'] != null) {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const WaybillPage()));
       } else {
@@ -163,7 +168,7 @@ class _AuthCheckerState extends State<AuthChecker> {
 }
 
 
-// --- Login Screen ---
+// ИЗМЕНЕННЫЙ экран авторизации
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -175,6 +180,12 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+
+  final _phoneMaskFormatter = MaskTextInputFormatter(
+    mask: '+7 (###) ###-##-##',
+    filter: {"#": RegExp(r'[0-9]')},
+    type: MaskAutoCompletionType.lazy,
+  );
 
   Future<void> _login() async {
     setState(() => _isLoading = true);
@@ -188,14 +199,14 @@ class _LoginPageState extends State<LoginPage> {
         },
         body: jsonEncode({
           'method': 'auth',
-          'phone': _phoneController.text,
+          'phone': _phoneMaskFormatter.getUnmaskedText(),
           'password': _passwordController.text,
         }),
       );
 
       if (response.statusCode == 200) {
         await DatabaseHelper.instance.saveUserData(
-          phone: _phoneController.text,
+          phone: _phoneMaskFormatter.getUnmaskedText(),
           password: _passwordController.text,
         );
 
@@ -236,8 +247,9 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       TextField(
                         controller: _phoneController,
-                        decoration: const InputDecoration(labelText: 'Номер телефона'),
+                        decoration: const InputDecoration(labelText: 'Номер телефона', hintText: '+7 (999) 123-45-67'),
                         keyboardType: TextInputType.phone,
+                        inputFormatters: [_phoneMaskFormatter],
                       ),
                       const SizedBox(height: 16),
                       TextField(
@@ -284,7 +296,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// --- Registration Screen ---
+// --- Registration Screen (без изменений) ---
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
   @override
@@ -305,8 +317,20 @@ class _RegistrationPageState extends State<RegistrationPage> {
     exportBackgroundColor: Colors.transparent,
   );
   bool _isLoading = false;
+  bool _isAgreed = false;
+
+  final _phoneMaskFormatter = MaskTextInputFormatter(
+    mask: '+7 (###) ###-##-##',
+    filter: {"#": RegExp(r'[0-9]')},
+    type: MaskAutoCompletionType.lazy,
+  );
 
   Future<void> _register() async {
+    if (!_isAgreed) {
+      _showAlertDialog('Требуется согласие', 'Пожалуйста, примите политику и условия использования, чтобы продолжить.');
+      return;
+    }
+
     if (!_formKey.currentState!.validate() || _signatureController.isEmpty) {
       _showAlertDialog('Ошибка', 'Пожалуйста, заполните все поля и поставьте подпись.');
       return;
@@ -321,7 +345,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       final signatureBase64 = base64Encode(signatureBytes);
       final Map<String, dynamic> data = {
         'method': 'registr',
-        'phone': _phoneController.text,
+        'phone': _phoneMaskFormatter.getUnmaskedText(),
         'password': _passwordController.text,
         'lastName': _lastNameController.text,
         'firstName': _firstNameController.text,
@@ -333,10 +357,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       final credentials = utf8.fuse(base64).encode('$staticServerUsername:$staticServerPassword');
       final response = await http.post(
         Uri.parse(registrationUrl),
-        headers: {
-          'Authorization': 'Basic $credentials',
-          'Content-Type': 'application/json',
-        },
+        headers: {'Authorization': 'Basic $credentials', 'Content-Type': 'application/json'},
         body: jsonData,
       );
 
@@ -354,6 +375,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
     }
   }
 
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showAlertDialog('Ошибка', 'Не удалось открыть ссылку: $url');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -366,7 +394,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
             children: <Widget>[
               const Text('Введите данные для регистрации', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
-              TextFormField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Номер телефона'), keyboardType: TextInputType.phone, validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
+              TextFormField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(labelText: 'Номер телефона', hintText: '+7 (999) 123-45-67'),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [_phoneMaskFormatter],
+                  validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
               const SizedBox(height: 12),
               TextFormField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Пароль'), obscureText: true, validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
               const SizedBox(height: 12),
@@ -384,6 +417,52 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 child: Signature(controller: _signatureController, height: 150, backgroundColor: Colors.grey.shade200),
               ),
               TextButton(onPressed: () => _signatureController.clear(), child: const Text('Очистить')),
+
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Checkbox(
+                    value: _isAgreed,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        _isAgreed = value ?? false;
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12.0),
+                      child: RichText(
+                        text: TextSpan(
+                          style: DefaultTextStyle.of(context).style.copyWith(fontSize: 14),
+                          children: [
+                            const TextSpan(text: 'Я принимаю '),
+                            TextSpan(
+                              text: 'Политику обработки персональных данных',
+                              style: TextStyle(color: Theme.of(context).primaryColor, decoration: TextDecoration.underline),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  _launchURL('https://your-company.com/privacy-policy');
+                                },
+                            ),
+                            const TextSpan(text: ' и '),
+                            TextSpan(
+                              text: 'Условия использования',
+                              style: TextStyle(color: Theme.of(context).primaryColor, decoration: TextDecoration.underline),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  _launchURL('https://your-company.com/terms-of-use');
+                                },
+                            ),
+                            const TextSpan(text: '.'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               _isLoading ? const CircularProgressIndicator() : SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _register, child: const Text('Зарегистрироваться'))),
             ],
@@ -425,16 +504,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 }
 
-// --- NEW WAYBILL SCREEN WITH SHIFT LOGIC ---
-
-// Enum to manage the screen state
+// --- WAYBILL SCREEN ---
 enum WaybillStatus {
-  loading, // Loading in progress
-  initial, // "Start Shift" button
-  waitingForDownload, // Waiting for 5 minutes
-  readyToDownload, // "Download Waybill" button is active
-  pdfDisplayed, // PDF is shown, "End Shift" button
-  error, // An error occurred
+  loading,
+  initial,
+  waitingForDownload,
+  waybillReady,
+  error,
 }
 
 class WaybillPage extends StatefulWidget {
@@ -455,7 +531,7 @@ class _WaybillPageState extends State<WaybillPage> {
 
   Timer? _timer;
   int _remainingSeconds = 0;
-  final int _waitTimeInSeconds = 5; // 5 minutes = 300 sec
+  final int _waitTimeInSeconds = 5; // 5 minutes
 
   @override
   void initState() {
@@ -472,26 +548,33 @@ class _WaybillPageState extends State<WaybillPage> {
 
   Future<void> _initializeState() async {
     setState(() => _status = WaybillStatus.loading);
-    final pdfFile = await _getPdfFile();
-    if (await pdfFile.exists()) {
-      setState(() {
-        _pdfPath = pdfFile.path;
-        _status = WaybillStatus.pdfDisplayed;
-      });
+    final userData = await DatabaseHelper.instance.getUserData();
+
+    if (userData == null || userData['phone'] == null) {
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+              (route) => false,
+        );
+      }
       return;
     }
 
-    final userData = await DatabaseHelper.instance.getUserData();
-    if (userData == null) {
-      _logout();
-      return;
-    }
     _userCredentials = {
       'phone': userData['phone'] as String?,
       'password': userData['password'] as String?
     };
     _requestId = userData['request_id'] as String?;
     final timestamp = userData['request_timestamp'] as int?;
+
+    final pdfFile = await _getPdfFile();
+    if (await pdfFile.exists() && _requestId != null) {
+      setState(() {
+        _pdfPath = pdfFile.path;
+        _status = WaybillStatus.waybillReady;
+      });
+      return;
+    }
 
     if (_requestId != null && timestamp != null) {
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -501,7 +584,7 @@ class _WaybillPageState extends State<WaybillPage> {
         _startTimer(secondsLeft);
         setState(() => _status = WaybillStatus.waitingForDownload);
       } else {
-        setState(() => _status = WaybillStatus.readyToDownload);
+        _downloadWaybill(isFirstTime: true);
       }
     } else {
       setState(() => _status = WaybillStatus.initial);
@@ -538,8 +621,6 @@ class _WaybillPageState extends State<WaybillPage> {
         if (responseBody.isNotEmpty) {
           _requestId = responseBody;
           await DatabaseHelper.instance.saveUserData(
-            phone: _userCredentials['phone']!,
-            password: _userCredentials['password']!,
             requestId: _requestId,
             requestTimestamp: DateTime.now().millisecondsSinceEpoch,
           );
@@ -559,7 +640,8 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 
-  Future<void> _downloadWaybill() async {
+  // ИСПРАВЛЕННЫЙ МЕТОД ЗАГРУЗКИ
+  Future<void> _downloadWaybill({bool isFirstTime = false}) async {
     setState(() => _status = WaybillStatus.loading);
     try {
       final authHeader = utf8.fuse(base64).encode('$staticServerUsername:$staticServerPassword');
@@ -572,20 +654,22 @@ class _WaybillPageState extends State<WaybillPage> {
       if (response.statusCode == 200) {
         final pdfFile = await _getPdfFile();
         await pdfFile.writeAsBytes(response.bodyBytes);
-        await DatabaseHelper.instance.clearWaybillRequestData();
+
+        // ВРЕМЯ ОБНОВЛЯЕТСЯ, НО REQUEST_ID БОЛЬШЕ НЕ УДАЛЯЕТСЯ
+        if (isFirstTime) {
+          await DatabaseHelper.instance.saveUserData(requestTimestamp: null);
+        }
+
         setState(() {
           _pdfPath = pdfFile.path;
-          _requestId = null;
-          _status = WaybillStatus.pdfDisplayed;
+          _status = WaybillStatus.waybillReady;
         });
       } else if (response.statusCode == 203) {
         final message = utf8.decode(response.bodyBytes);
         await _showInfoDialog("Информация", message);
-        setState(() {
-          _status = WaybillStatus.readyToDownload;
-        });
-      }
-      else {
+        _startTimer(_waitTimeInSeconds);
+        setState(() => _status = WaybillStatus.waitingForDownload);
+      } else {
         throw Exception('Server error: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
@@ -596,6 +680,46 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 
+
+  Future<void> _shareOrSaveWaybill() async {
+    if (_requestId == null) {
+      _showAlertDialog('Ошибка', 'ID путевого листа не найден.');
+      return;
+    }
+    final snackBar = SnackBar(content: Text('Подготовка файла...'));
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+    try {
+      final authHeader = utf8.fuse(base64).encode('$staticServerUsername:$staticServerPassword');
+      final uri = Uri.parse('$downloadWaybillUrl?request_id=$_requestId');
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Basic $authHeader'},
+      );
+
+      if (response.statusCode == 200) {
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = await File('${tempDir.path}/waybill_${_requestId!.substring(0, 8)}.pdf').create();
+        await tempFile.writeAsBytes(response.bodyBytes);
+
+        final xFile = XFile(tempFile.path);
+        await Share.shareXFiles([xFile], text: 'Путевой лист');
+
+      } else {
+        throw Exception('Ошибка сервера: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showAlertDialog('Ошибка', 'Не удалось подготовить файл: $e');
+      }
+    } finally {
+      if(mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+    }
+  }
+
+
   Future<void> _endShift() async {
     setState(() => _status = WaybillStatus.loading);
     try {
@@ -603,9 +727,11 @@ class _WaybillPageState extends State<WaybillPage> {
       if (await file.exists()) {
         await file.delete();
       }
+      await DatabaseHelper.instance.clearWaybillRequestData();
       _mileageController.clear();
       setState(() {
         _pdfPath = null;
+        _requestId = null;
         _status = WaybillStatus.initial;
       });
     } catch (e) {
@@ -617,19 +743,6 @@ class _WaybillPageState extends State<WaybillPage> {
   }
 
   // --- HELPER METHODS ---
-  Future<void> _sharePdf() async {
-    if (_pdfPath != null) {
-      try {
-        final file = XFile(_pdfPath!);
-        await Share.shareXFiles([file], text: 'Путевой лист');
-      } catch (e) {
-        if (mounted) {
-          _showAlertDialog('Ошибка', 'Не удалось поделиться файлом: $e');
-        }
-      }
-    }
-  }
-
   Future<void> _showInfoDialog(String title, String message) async {
     return showDialog<void>(
       context: context,
@@ -653,6 +766,27 @@ class _WaybillPageState extends State<WaybillPage> {
         );
       },
     );
+  }
+
+  Future<bool> _showConfirmationDialog(String title, String content) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Нет'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Да'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   Future<void> _showAlertDialog(String title, String message) async {
@@ -693,13 +827,18 @@ class _WaybillPageState extends State<WaybillPage> {
         setState(() => _remainingSeconds--);
       } else {
         timer.cancel();
-        setState(() => _status = WaybillStatus.readyToDownload);
+        _downloadWaybill(isFirstTime: true);
       }
     });
   }
 
-  Future<void> _logout() async {
-    await DatabaseHelper.instance.clearAllUserData();
+  Future<void> _logout({bool clearSessionOnly = true}) async {
+    if (clearSessionOnly) {
+      await DatabaseHelper.instance.clearAuthCredentials();
+    } else {
+      await DatabaseHelper.instance.clearAllUserData();
+    }
+
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -708,26 +847,34 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 
+
   String get _timerText {
     final minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
   }
 
-  // --- BUILD METHOD ---
+  void _viewPdf() {
+    if (_pdfPath != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PdfViewerPage(filePath: _pdfPath!),
+        ),
+      );
+    } else {
+      _showAlertDialog('Ошибка', 'Файл путевого листа не найден.');
+    }
+  }
+
+  // --- BUILD МЕТОДЫ ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мои путевые листы'),
         actions: [
-          if (_status == WaybillStatus.pdfDisplayed)
-            IconButton(
-              icon: const Icon(Icons.share),
-              onPressed: _sharePdf,
-              tooltip: 'Поделиться/Сохранить/Печать',
-            ),
-          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
+          IconButton(icon: const Icon(Icons.logout), onPressed: () => _logout()),
         ],
       ),
       body: Padding(
@@ -747,21 +894,93 @@ class _WaybillPageState extends State<WaybillPage> {
 
   Widget _buildContent() {
     switch (_status) {
-      case WaybillStatus.pdfDisplayed:
-        return _pdfPath != null ? PDFView(filePath: _pdfPath!) : _buildErrorContent();
+      case WaybillStatus.waybillReady:
+        return _buildQrCodeAndActionsContent();
       case WaybillStatus.initial:
         return _buildInitialContent();
       case WaybillStatus.loading:
         return const Center(child: CircularProgressIndicator());
       case WaybillStatus.waitingForDownload:
         return _buildWaitingContent();
-      case WaybillStatus.readyToDownload:
-        return _buildReadyToDownloadContent();
       case WaybillStatus.error:
         return _buildErrorContent();
       default:
         return const Center(child: Text("Неизвестное состояние"));
     }
+  }
+
+  Widget _buildQrCodeAndActionsContent() {
+    final qrData = '$downloadWaybillUrl?request_id=$_requestId';
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Путевой лист активен',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Предъявите QR-код для проверки или скачайте файл.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 24),
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: QrImageView(
+                  data: qrData,
+                  version: QrVersions.auto,
+                  size: 220.0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.share),
+                label: const Text('Поделиться / Сохранить'),
+                onPressed: _shareOrSaveWaybill,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.visibility),
+                label: const Text('Просмотреть'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                onPressed: _viewPdf,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.close_sharp),
+                label: const Text('Завершить смену'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                onPressed: () async {
+                  final confirm = await _showConfirmationDialog(
+                    'Завершение смены',
+                    'Вы уверены? Локальный файл путевого листа будет удален.',
+                  );
+                  if (confirm) {
+                    _endShift();
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildInitialContent() {
@@ -801,7 +1020,6 @@ class _WaybillPageState extends State<WaybillPage> {
       ),
     );
   }
-
   Widget _buildWaitingContent() {
     return Center(
       child: Column(
@@ -832,25 +1050,6 @@ class _WaybillPageState extends State<WaybillPage> {
           const Text('Путевой лист формируется...', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Text('Это займет несколько минут', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReadyToDownloadContent() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
-          const SizedBox(height: 24),
-          const Text('Путевой лист готов!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(
-            'Нажмите кнопку ниже, чтобы загрузить документ.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-          ),
         ],
       ),
     );
@@ -889,11 +1088,9 @@ class _WaybillPageState extends State<WaybillPage> {
       case WaybillStatus.initial:
         return SizedBox(width: double.infinity, child: ElevatedButton.icon(icon: const Icon(Icons.play_arrow), onPressed: _openShift, label: const Text("Открыть смену")));
       case WaybillStatus.waitingForDownload:
-        return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: null, child: Text("Загрузить путевой лист ($_timerText)")));
-      case WaybillStatus.readyToDownload:
-        return SizedBox(width: double.infinity, child: ElevatedButton.icon(icon: const Icon(Icons.download), onPressed: _downloadWaybill, label: const Text("Загрузить путевой лист")));
-      case WaybillStatus.pdfDisplayed:
-        return SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _endShift, style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent), icon: const Icon(Icons.close_sharp), label: const Text("Завершить смену")));
+        return SizedBox(width: double.infinity, child: ElevatedButton(onPressed: null, child: Text("Автоматическая загрузка через ($_timerText)")));
+      case WaybillStatus.waybillReady:
+        return const SizedBox.shrink(); // Buttons are now inside the main content
       case WaybillStatus.loading:
       case WaybillStatus.error:
         return const SizedBox.shrink();
@@ -902,3 +1099,23 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 }
+
+// --- НОВЫЙ ОТДЕЛЬНЫЙ ВИДЖЕТ ДЛЯ ПРОСМОТРА PDF ---
+class PdfViewerPage extends StatelessWidget {
+  final String filePath;
+
+  const PdfViewerPage({super.key, required this.filePath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Просмотр путевого листа'),
+      ),
+      body: PDFView(
+        filePath: filePath,
+      ),
+    );
+  }
+}
+
