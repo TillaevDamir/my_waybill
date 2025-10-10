@@ -10,7 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:signature/signature.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+//import 'package:url_launcher/url_launcher.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 import 'database_helper.dart';
@@ -174,6 +174,8 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  final _formKey = GlobalKey<FormState>();
+
   final _phoneMaskFormatter = MaskTextInputFormatter(
     mask: '+7 (###) ###-##-##',
     filter: {"#": RegExp(r'[0-9]')},
@@ -181,6 +183,11 @@ class _LoginPageState extends State<LoginPage> {
   );
 
   Future<void> _login() async {
+
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final credentials = utf8.fuse(base64).encode('$staticServerUsername:$staticServerPassword');
@@ -233,24 +240,42 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 8),
               Text('Войдите, чтобы начать работу', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600])),
               const SizedBox(height: 32),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: _phoneController,
-                        decoration: const InputDecoration(labelText: 'Номер телефона', hintText: '+7 (999) 123-45-67'),
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [_phoneMaskFormatter],
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Пароль'),
-                      ),
-                    ],
+              Form(
+                key: _formKey,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _phoneController,
+                          decoration: const InputDecoration(labelText: 'Номер телефона', hintText: '+7 (999) 123-45-67'),
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [_phoneMaskFormatter],
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Введите номер телефона';
+                            }
+                            if (value.length != 18) {
+                              return 'Введите полный номер';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(labelText: 'Пароль'),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Введите пароль';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -317,6 +342,40 @@ class _RegistrationPageState extends State<RegistrationPage> {
     type: MaskAutoCompletionType.lazy,
   );
 
+  final String _privacyPolicyText = """
+1. ОБЩИЕ ПОЛОЖЕНИЯ
+1.1. Настоящая Политика в отношении обработки персональных данных (далее – Политика) составлена в соответствии с требованиями законодательства о защите персональных данных и определяет порядок обработки персональных данных и меры по обеспечению безопасности персональных данных, предпринимаемые Оператором.
+1.2. Оператор ставит своей важнейшей целью и условием осуществления своей деятельности соблюдение прав и свобод человека и гражданина при обработке его персональных данных, в том числе защиты прав на неприкосновенность частной жизни, личную и семейную тайну.
+
+2. ОСНОВНЫЕ ПОНЯТИЯ, ИСПОЛЬЗУЕМЫЕ В ПОЛИТИКЕ
+2.1. Автоматизированная обработка персональных данных – обработка персональных данных с помощью средств вычислительной техники.
+2.2. Блокирование персональных данных – временное прекращение обработки персональных данных (за исключением случаев, если обработка необходима для уточнения персональных данных).
+2.3. Информационная система персональных данных — совокупность содержащихся в базах данных персональных данных, и обеспечивающих их обработку информационных технологий и технических средств.
+
+3. ПРАВА И ОБЯЗАННОСТИ ОПЕРАТОРА
+3.1. Оператор имеет право:
+– получать от субъекта персональных данных достоверные информацию и/или документы, содержащие персональные данные;
+– в случае отзыва субъектом персональных данных согласия на обработку персональных данных Оператор вправе продолжить обработку персональных данных без согласия субъекта персональных данных при наличии оснований, указанных в Законе о персональных данных.
+""";
+
+  final String _termsOfUseText = """
+1. ОБЩИЕ ПОЛОЖЕНИЯ
+1.1. Настоящее Пользовательское соглашение (далее – Соглашение) относится к мобильному приложению «My Waybill», расположенному по адресу App Store и Google Play.
+1.2. Настоящее Соглашение регулирует отношения между Администрацией мобильного приложения «My Waybill» (далее – Администрация приложения) и Пользователем данного Приложения.
+
+2. ПРЕДМЕТ СОГЛАШЕНИЯ
+2.1. Предметом настоящего Соглашения является предоставление Пользователю Приложения доступа к содержащимся в Приложении сервисам.
+2.2. Приложение предоставляет Пользователю следующие виды услуг (сервисов):
+– доступ к электронным путевым листам;
+– доступ к средствам поиска и навигации;
+– предоставление Пользователю возможности размещения сообщений, комментариев;
+– доступ к информации о приложении и условиях его использования на бесплатной основе.
+
+3. ПРАВА И ОБЯЗАННОСТИ СТОРОН
+3.1. Администрация приложения вправе:
+3.1.1. Изменять правила пользования Приложением, а также изменять содержание данного Приложения. Изменения вступают в силу с момента публикации новой редакции Соглашения в Приложении.
+""";
+
   Future<void> _register() async {
     if (!_isAgreed) {
       _showAlertDialog('Требуется согласие', 'Пожалуйста, примите политику и условия использования, чтобы продолжить.');
@@ -367,12 +426,34 @@ class _RegistrationPageState extends State<RegistrationPage> {
     }
   }
 
-  Future<void> _launchURL(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      _showAlertDialog('Ошибка', 'Не удалось открыть ссылку: $url');
-    }
+  Future<void> _showPolicyDialog(String title, String content) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: Text(content),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Закрыть'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
+
+  // Future<void> _launchURL(String url) async {
+  //   final Uri uri = Uri.parse(url);
+  //   if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+  //     _showAlertDialog('Ошибка', 'Не удалось открыть ссылку: $url');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -391,7 +472,15 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   decoration: const InputDecoration(labelText: 'Номер телефона', hintText: '+7 (999) 123-45-67'),
                   keyboardType: TextInputType.phone,
                   inputFormatters: [_phoneMaskFormatter],
-                  validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) {
+                      return 'Обязательное поле';
+                    }
+                    if (v.length != 18) {
+                      return 'Введите полный номер';
+                    }
+                    return null;
+                  }),
               const SizedBox(height: 12),
               TextFormField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Пароль'), obscureText: true, validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
               const SizedBox(height: 12),
@@ -435,7 +524,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
                               style: TextStyle(color: Theme.of(context).primaryColor, decoration: TextDecoration.underline),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
-                                  _launchURL('http://your-company.com/privacy-policy');
+                                  _showPolicyDialog(
+                                    'Политика обработки персональных данных',
+                                    _privacyPolicyText,
+                                  );
                                 },
                             ),
                             const TextSpan(text: ' и '),
@@ -444,7 +536,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
                               style: TextStyle(color: Theme.of(context).primaryColor, decoration: TextDecoration.underline),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
-                                  _launchURL('http://your-company.com/terms-of-use');
+                                  _showPolicyDialog(
+                                    'Условия использования',
+                                    _termsOfUseText,
+                                  );
                                 },
                             ),
                             const TextSpan(text: '.'),
@@ -905,12 +1000,13 @@ class _WaybillPageState extends State<WaybillPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Путевой лист активен',
+              'Электронный Путевой Лист водителя',
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Предъявите QR-код для проверки или скачайте файл.',
+              'Покажите данный QR код сотруднику ДПС или откройте ЭПЛ самостоятельно',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
             ),
@@ -930,8 +1026,15 @@ class _WaybillPageState extends State<WaybillPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.share),
-                label: const Text('Поделиться / Сохранить'),
+                icon: const Icon(
+                    Icons.share,
+                    color: Colors.black,
+                ),
+                label: const Text(
+                    'Поделиться / Сохранить ЭПЛ',
+                     style: TextStyle(color: Colors.black),
+                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white38),
                 onPressed: _shareOrSaveWaybill,
               ),
             ),
@@ -939,9 +1042,15 @@ class _WaybillPageState extends State<WaybillPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.visibility),
-                label: const Text('Просмотреть'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                icon: const Icon(
+                    Icons.visibility,
+                    color: Colors.black,
+                ),
+                label: const Text(
+                    'Просмотреть ЭПЛ',
+                    style: TextStyle(color: Colors.black),
+                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white38),
                 onPressed: _viewPdf,
               ),
             ),
@@ -955,7 +1064,7 @@ class _WaybillPageState extends State<WaybillPage> {
                 onPressed: () async {
                   final confirm = await _showConfirmationDialog(
                     'Завершение смены',
-                    'Вы уверены? Локальный файл путевого листа будет удален.',
+                    'Вы уверены? Электронный путевой лист будет удален.',
                   );
                   if (confirm) {
                     _endShift();
