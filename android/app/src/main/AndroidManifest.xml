@@ -4,7 +4,7 @@
     <!-- Add this permission for network access -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="Путевой лист"
+        android:label="e-Way"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity

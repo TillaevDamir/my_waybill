@@ -10,34 +10,34 @@ import 'package:flutter/services.dart';
 import 'package:signature/signature.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-//import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 import 'database_helper.dart';
 
-class MyHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
-      ..badCertificateCallback =
-          (X509Certificate cert, String host, int port) => true;
-  }
-}
+// class MyHttpOverrides extends HttpOverrides {
+//   @override
+//   HttpClient createHttpClient(SecurityContext? context) {
+//     return super.createHttpClient(context)
+//       ..badCertificateCallback =
+//           (X509Certificate cert, String host, int port) => true;
+//   }
+// }
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  HttpOverrides.global = MyHttpOverrides();
+  // HttpOverrides.global = MyHttpOverrides();
   runApp(const WaybillApp());
 }
 
-const String baseUrl = 'http://damir.service.kg//taxi/hs/taxi';
+const String baseUrl = 'https://damir.service.kg//taxi/hs/taxi';
 const String loginUrl = '$baseUrl/auth';
 const String registrationUrl = '$baseUrl/auth';
 const String openShiftUrl = '$baseUrl/open_shift';
 const String getWaybillUrl = '$baseUrl/get_waybill';
 
-const String downloadWaybillUrl = 'http://damir.service.kg/taxi/hs/taxi/download_waybill';
-
+const String downloadWaybillUrl = 'https://damir.service.kg/taxi/hs/taxi/download_waybill';
+const String deleteAccountUrl = 'https://raw.githubusercontent.com/TillaevDamir/my_waybill/refs/heads/main/DATA_DELETION.md';
 const String staticServerUsername = 'HttpUser';
 const String staticServerPassword = 'HttpUser';
 
@@ -447,13 +447,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
       },
     );
   }
-
-  // Future<void> _launchURL(String url) async {
-  //   final Uri uri = Uri.parse(url);
-  //   if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-  //     _showAlertDialog('Ошибка', 'Не удалось открыть ссылку: $url');
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -929,6 +922,12 @@ class _WaybillPageState extends State<WaybillPage> {
     }
   }
 
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showAlertDialog('Ошибка', 'Не удалось открыть ссылку: $url');
+    }
+  }
 
   String get _timerText {
     final minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
@@ -967,6 +966,21 @@ class _WaybillPageState extends State<WaybillPage> {
               padding: const EdgeInsets.only(top: 16.0),
               child: _buildActionButton(),
             ),
+            if (_status == WaybillStatus.initial)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: TextButton(
+                  onPressed: () => _launchURL(deleteAccountUrl),
+                  child: Text(
+                    'Запросить удаление аккаунта',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
