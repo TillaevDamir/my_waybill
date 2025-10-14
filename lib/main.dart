@@ -75,7 +75,15 @@ class _WaybillAppState extends State<WaybillApp> with WidgetsBindingObserver {
       navigatorKey: navigatorKey,
       title: 'Мобильное приложение для водителей',
       theme: ThemeData(
-        primarySwatch: Colors.indigo,
+        primarySwatch: Colors.yellow,
+        primaryColor: Colors.yellow,
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Colors.black,
+
+          selectionColor: Colors.yellowAccent,
+
+          selectionHandleColor: Colors.black,
+        ),
         scaffoldBackgroundColor: Colors.grey[50],
         fontFamily: 'Inter',
         appBarTheme: const AppBarTheme(
@@ -91,8 +99,8 @@ class _WaybillAppState extends State<WaybillApp> with WidgetsBindingObserver {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.indigo,
-            foregroundColor: Colors.white,
+            backgroundColor: Colors.yellow,
+            foregroundColor: Colors.black87,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -111,7 +119,7 @@ class _WaybillAppState extends State<WaybillApp> with WidgetsBindingObserver {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.indigo, width: 2),
+            borderSide: const BorderSide(color: Colors.yellow, width: 2),
           ),
           labelStyle: TextStyle(color: Colors.grey[700]),
         ),
@@ -156,7 +164,7 @@ class _AuthCheckerState extends State<AuthChecker> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      body: Center(child: CircularProgressIndicator(color: Colors.yellow)),
     );
   }
 }
@@ -173,6 +181,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordObscured = true;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -216,7 +225,7 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
       } else {
-        await _showAlertDialog('Ошибка авторизации', '${response.body} Код: ${response.statusCode}');
+        await _showAlertDialog('Ошибка авторизации', '${response.body}');
       }
     } catch (e) {
       await _showAlertDialog('Ошибка', 'Произошла ошибка при входе. Проверьте подключение к сети.');
@@ -234,7 +243,7 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.local_shipping, size: 80, color: Theme.of(context).primaryColor),
+              Icon(Icons.local_taxi_rounded, size: 80, color: Colors.yellow),
               const SizedBox(height: 16),
               Text('Авторизация водителя', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -265,8 +274,20 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(labelText: 'Пароль'),
+                          obscureText: _isPasswordObscured,
+                          decoration: InputDecoration(
+                              labelText: 'Пароль',
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordObscured = !_isPasswordObscured;
+                                });
+                              }
+                            ),
+                          ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Введите пароль';
@@ -281,7 +302,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 24),
               _isLoading
-                  ? const CircularProgressIndicator()
+                  ? const CircularProgressIndicator(color: Colors.yellow)
                   : SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -294,6 +315,7 @@ class _LoginPageState extends State<LoginPage> {
               TextButton(
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationPage())),
                 child: const Text('Зарегистрироваться'),
+                style: TextButton.styleFrom(foregroundColor: Colors.black87),
               ),
             ],
           ),
@@ -327,7 +349,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _middleNameController = TextEditingController();
-  final TextEditingController _dobController = TextEditingController();
   final SignatureController _signatureController = SignatureController(
     penStrokeWidth: 1.5,
     penColor: Colors.blue.shade900,
@@ -335,6 +356,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
   );
   bool _isLoading = false;
   bool _isAgreed = false;
+  bool _isPasswordObscured = true;
 
   final _phoneMaskFormatter = MaskTextInputFormatter(
     mask: '+7 (###) ###-##-##',
@@ -401,7 +423,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
         'lastName': _lastNameController.text,
         'firstName': _firstNameController.text,
         'middleName': _middleNameController.text,
-        'dob': _dobController.text,
         'signature': signatureBase64,
       };
       final String jsonData = jsonEncode(data);
@@ -417,7 +438,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
           if (mounted) Navigator.of(context).pop();
         });
       } else {
-        await _showAlertDialog('Ошибка регистрации', '${response.body} Код: ${response.statusCode}');
+        await _showAlertDialog('Ошибка регистрации', '${response.body}');
       }
     } catch (e) {
       await _showAlertDialog('Ошибка', 'Произошла ошибка при регистрации: $e');
@@ -441,6 +462,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
+              style: TextButton.styleFrom(foregroundColor: Colors.black87),
             ),
           ],
         );
@@ -475,7 +497,23 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     return null;
                   }),
               const SizedBox(height: 12),
-              TextFormField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Пароль'), obscureText: true, validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
+              TextFormField(
+                  controller: _passwordController,
+                  obscureText: _isPasswordObscured,
+                  decoration: InputDecoration(
+                      labelText: 'Пароль',
+                      suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordObscured = !_isPasswordObscured;
+                            });
+                          },
+                      ),
+                  ),
+                  validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
               const SizedBox(height: 12),
               TextFormField(controller: _lastNameController, decoration: const InputDecoration(labelText: 'Фамилия'), validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
               const SizedBox(height: 12),
@@ -483,14 +521,16 @@ class _RegistrationPageState extends State<RegistrationPage> {
               const SizedBox(height: 12),
               TextFormField(controller: _middleNameController, decoration: const InputDecoration(labelText: 'Отчество')),
               const SizedBox(height: 12),
-              TextFormField(controller: _dobController, decoration: const InputDecoration(labelText: 'Дата рождения (ДД.ММ.ГГГГ)'), onTap: () => _selectDate(context, _dobController), readOnly: true, validator: (v) => v!.isEmpty ? 'Обязательное поле' : null),
-              const SizedBox(height: 12),
               const Text('Подпись:'),
               Container(
                 decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
                 child: Signature(controller: _signatureController, height: 150, backgroundColor: Colors.grey.shade200),
               ),
-              TextButton(onPressed: () => _signatureController.clear(), child: const Text('Очистить')),
+              TextButton(
+                  onPressed: () => _signatureController.clear(),
+                  child: const Text('Очистить'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.black87)
+              ),
 
               const SizedBox(height: 12),
               Row(
@@ -498,6 +538,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 children: [
                   Checkbox(
                     value: _isAgreed,
+                    activeColor: Colors.yellow,
+                    checkColor: Colors.black87,
                     onChanged: (bool? value) {
                       setState(() {
                         _isAgreed = value ?? false;
@@ -514,7 +556,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             const TextSpan(text: 'Я принимаю '),
                             TextSpan(
                               text: 'Политику обработки персональных данных',
-                              style: TextStyle(color: Theme.of(context).primaryColor, decoration: TextDecoration.underline),
+                              style: TextStyle(color: Colors.black87, decoration: TextDecoration.underline),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
                                   _showPolicyDialog(
@@ -526,7 +568,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             const TextSpan(text: ' и '),
                             TextSpan(
                               text: 'Условия использования',
-                              style: TextStyle(color: Theme.of(context).primaryColor, decoration: TextDecoration.underline),
+                              style: TextStyle(color: Colors.black87, decoration: TextDecoration.underline),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
                                   _showPolicyDialog(
@@ -544,7 +586,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 ],
               ),
               const SizedBox(height: 20),
-              _isLoading ? const CircularProgressIndicator() : SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _register, child: const Text('Зарегистрироваться'))),
+              _isLoading ? const CircularProgressIndicator(color: Colors.yellow) : SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                      onPressed: _register,
+                      child: const Text('Зарегистрироваться'),
+                     ),
+                  ),
             ],
           ),
         ),
@@ -826,7 +874,7 @@ class _WaybillPageState extends State<WaybillPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
-              Icon(Icons.info_outline, color: Theme.of(context).primaryColor),
+              Icon(Icons.info_outline, color: Colors.yellow),
               const SizedBox(width: 10),
               Text(title),
             ],
@@ -853,10 +901,12 @@ class _WaybillPageState extends State<WaybillPage> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Нет'),
+            style: TextButton.styleFrom(foregroundColor: Colors.black87)
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Да'),
+            style: TextButton.styleFrom(foregroundColor: Colors.black87),
           ),
         ],
       ),
@@ -994,7 +1044,7 @@ class _WaybillPageState extends State<WaybillPage> {
       case WaybillStatus.initial:
         return _buildInitialContent();
       case WaybillStatus.loading:
-        return const Center(child: CircularProgressIndicator());
+        return const Center(child: CircularProgressIndicator(color: Colors.yellow));
       case WaybillStatus.waitingForDownload:
         return _buildWaitingContent();
       case WaybillStatus.error:
@@ -1144,7 +1194,7 @@ class _WaybillPageState extends State<WaybillPage> {
                   value: _remainingSeconds / _waitTimeInSeconds,
                   strokeWidth: 8,
                   backgroundColor: Colors.grey[300],
-                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.yellow),
                 ),
                 Center(
                   child: Text(

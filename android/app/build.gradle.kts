@@ -8,7 +8,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Код для чтения вашего файла key.properties, написанный на Kotlin
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
@@ -17,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 
 
 android {
-    namespace = "kg.adanel_studio.my_waybill" // Убедитесь, что это ваш ID
+    namespace = "kg.adanel_studio.my_waybill"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -42,7 +41,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "kg.adanel_studio.my_waybill" // Убедитесь, что это ваш ID
+        applicationId = "kg.adanel_studio.my_waybill"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -51,7 +50,6 @@ android {
 
     buildTypes {
         release {
-            // Применяем созданную выше конфигурацию подписи
             signingConfig = signingConfigs.getByName("release")
         }
     }
