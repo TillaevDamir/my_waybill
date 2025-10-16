@@ -30,13 +30,13 @@ void main() {
   runApp(const WaybillApp());
 }
 
-const String baseUrl = 'https://damir.service.kg//taxi/hs/taxi';
+const String baseUrl = 'https://damir.service.kg//taxi/hs/taxi'; //damir.service.kg
 const String loginUrl = '$baseUrl/auth';
 const String registrationUrl = '$baseUrl/auth';
 const String openShiftUrl = '$baseUrl/open_shift';
 const String getWaybillUrl = '$baseUrl/get_waybill';
 
-const String downloadWaybillUrl = 'https://damir.service.kg/taxi/hs/taxi/download_waybill';
+const String downloadWaybillUrl = 'https://damir.service.kg/taxi/hs/taxi/download_waybill';  //damir.service.kg
 const String deleteAccountUrl = 'https://raw.githubusercontent.com/TillaevDamir/my_waybill/refs/heads/main/DATA_DELETION.md';
 const String staticServerUsername = 'HttpUser';
 const String staticServerPassword = 'HttpUser';
@@ -214,9 +214,12 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (response.statusCode == 200) {
+        final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+        final fullName = responseBody['fullName'] as String?;
         await DatabaseHelper.instance.saveUserData(
           phone: _phoneMaskFormatter.getUnmaskedText(),
           password: _passwordController.text,
+          fullName: fullName,
         );
 
         if (mounted) {
@@ -655,6 +658,7 @@ class _WaybillPageState extends State<WaybillPage> {
   String? _requestId;
   String _errorMessage = '';
   Map<String, String?> _userCredentials = {};
+  String _userName = 'Загрузка...';
 
   Timer? _timer;
   int _remainingSeconds = 0;
@@ -686,6 +690,10 @@ class _WaybillPageState extends State<WaybillPage> {
       }
       return;
     }
+
+    setState(() {
+      _userName = userData['fullName'] as String? ?? 'Мой путевой лист';
+    });
 
     _userCredentials = {
       'phone': userData['phone'] as String?,
@@ -1002,7 +1010,11 @@ class _WaybillPageState extends State<WaybillPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Мои путевые листы'),
+        title: Text(
+          _userName,
+          style: const TextStyle(fontSize: 18),
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.logout), onPressed: () => _logout()),
         ],
