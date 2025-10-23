@@ -30,17 +30,16 @@ void main() {
   runApp(const WaybillApp());
 }
 
-const String baseUrl = 'https://damir.service.kg//taxi/hs/taxi'; //damir.service.kg
+const String baseUrl = 'https://alga-pro.ru/taxi/hs/taxi'; //alga-pro.ru
 const String loginUrl = '$baseUrl/auth';
 const String registrationUrl = '$baseUrl/auth';
 const String openShiftUrl = '$baseUrl/open_shift';
 const String getWaybillUrl = '$baseUrl/get_waybill';
 
-const String downloadWaybillUrl = 'https://damir.service.kg/taxi/hs/taxi/download_waybill';  //damir.service.kg
+const String downloadWaybillUrl = 'https://alga-pro.ru/taxi/hs/taxi/download_waybill';  //alga-pro.ru
 const String deleteAccountUrl = 'https://raw.githubusercontent.com/TillaevDamir/my_waybill/refs/heads/main/DATA_DELETION.md';
 const String staticServerUsername = 'HttpUser';
-const String staticServerPassword = 'HttpUser';
-
+const String staticServerPassword = 'Sa2ze3gu';
 
 class WaybillApp extends StatefulWidget {
   const WaybillApp({super.key});
@@ -385,8 +384,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
   final String _termsOfUseText = """
 1. ОБЩИЕ ПОЛОЖЕНИЯ
-1.1. Настоящее Пользовательское соглашение (далее – Соглашение) относится к мобильному приложению «My Waybill», расположенному по адресу App Store и Google Play.
-1.2. Настоящее Соглашение регулирует отношения между Администрацией мобильного приложения «My Waybill» (далее – Администрация приложения) и Пользователем данного Приложения.
+1.1. Настоящее Пользовательское соглашение (далее – Соглашение) относится к мобильному приложению «AlgaPro», расположенному по адресу Google Play.
+1.2. Настоящее Соглашение регулирует отношения между Администрацией мобильного приложения «AlgaPro» (далее – Администрация приложения) и Пользователем данного Приложения.
 
 2. ПРЕДМЕТ СОГЛАШЕНИЯ
 2.1. Предметом настоящего Соглашения является предоставление Пользователю Приложения доступа к содержащимся в Приложении сервисам.
