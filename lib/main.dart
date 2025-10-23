@@ -12,34 +12,34 @@ import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'database_helper.dart';
 
-// class MyHttpOverrides extends HttpOverrides {
-//   @override
-//   HttpClient createHttpClient(SecurityContext? context) {
-//     return super.createHttpClient(context)
-//       ..badCertificateCallback =
-//           (X509Certificate cert, String host, int port) => true;
-//   }
-// }
 
-void main() {
+void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env.production");
+  } catch (e) {
+    // Обработка, если файл .env не найден или не загружен
+    print("Ошибка загрузки .env файла: $e");
+    // Можете установить значения по умолчанию, чтобы приложение запустилось
+  }
   // HttpOverrides.global = MyHttpOverrides();
   runApp(const WaybillApp());
 }
 
-const String baseUrl = 'https://alga-pro.ru/taxi/hs/taxi'; //alga-pro.ru
-const String loginUrl = '$baseUrl/auth';
-const String registrationUrl = '$baseUrl/auth';
-const String openShiftUrl = '$baseUrl/open_shift';
-const String getWaybillUrl = '$baseUrl/get_waybill';
+final String baseUrl = dotenv.env['BASE_URL']!;
+final String loginUrl = '$baseUrl/auth';
+final String registrationUrl = '$baseUrl/auth';
+final String openShiftUrl = '$baseUrl/open_shift';
+final String getWaybillUrl = '$baseUrl/get_waybill';
 
-const String downloadWaybillUrl = 'https://alga-pro.ru/waybill_dl';  //alga-pro.ru
-const String deleteAccountUrl = 'https://raw.githubusercontent.com/TillaevDamir/my_waybill/refs/heads/main/DATA_DELETION.md';
-const String staticServerUsername = 'HttpUser';
-const String staticServerPassword = 'HttpUser';
+final String downloadWaybillUrl = dotenv.env['WAY_URL']!;
+final String deleteAccountUrl = 'https://raw.githubusercontent.com/TillaevDamir/my_waybill/refs/heads/main/DATA_DELETION.md';
+final String staticServerUsername = dotenv.env['API_USER']!;
+final String staticServerPassword = dotenv.env['API_PASSWORD']!;
 
 class WaybillApp extends StatefulWidget {
   const WaybillApp({super.key});
