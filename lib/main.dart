@@ -36,10 +36,10 @@ const String registrationUrl = '$baseUrl/auth';
 const String openShiftUrl = '$baseUrl/open_shift';
 const String getWaybillUrl = '$baseUrl/get_waybill';
 
-const String downloadWaybillUrl = 'https://alga-pro.ru/taxi/hs/taxi/download_waybill';  //alga-pro.ru
+const String downloadWaybillUrl = 'https://alga-pro.ru/waybill_dl';  //alga-pro.ru
 const String deleteAccountUrl = 'https://raw.githubusercontent.com/TillaevDamir/my_waybill/refs/heads/main/DATA_DELETION.md';
 const String staticServerUsername = 'HttpUser';
-const String staticServerPassword = 'Sa2ze3gu';
+const String staticServerPassword = 'HttpUser';
 
 class WaybillApp extends StatefulWidget {
   const WaybillApp({super.key});

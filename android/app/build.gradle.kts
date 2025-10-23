@@ -43,7 +43,7 @@ android {
     defaultConfig {
         applicationId = "kg.adanel_studio.my_waybill"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 35                              //flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
